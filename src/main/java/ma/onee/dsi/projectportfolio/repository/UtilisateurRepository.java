@@ -1,10 +1,20 @@
 package ma.onee.dsi.projectportfolio.repository;
 
-import java.util.Optional;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
+import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> {
 
+    @EntityGraph(attributePaths = "role")
     Optional<Utilisateur> findByEmail(String email);
+
+    @EntityGraph(attributePaths = "role")
+    Optional<Utilisateur> findByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    long countByRole_Libelle(RoleLibelle libelle);
 }

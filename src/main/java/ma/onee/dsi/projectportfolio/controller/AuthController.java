@@ -1,5 +1,6 @@
 package ma.onee.dsi.projectportfolio.controller;
 
+import jakarta.validation.Valid;
 import ma.onee.dsi.projectportfolio.dto.AuthResponse;
 import ma.onee.dsi.projectportfolio.dto.LoginRequest;
 import ma.onee.dsi.projectportfolio.dto.RegisterRequest;
@@ -21,12 +22,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.authenticate(request));
     }
 }

@@ -4,4 +4,6 @@ import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface HistoriqueModificationRepository extends JpaRepository<HistoriqueModification, Long> {
+
+    long countByUtilisateur_IdUtilisateur(Long idUtilisateur);
 }

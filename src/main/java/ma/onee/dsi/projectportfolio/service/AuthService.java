@@ -7,6 +7,8 @@ import ma.onee.dsi.projectportfolio.dto.RegisterRequest;
 import ma.onee.dsi.projectportfolio.entity.Role;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
+import ma.onee.dsi.projectportfolio.exception.DuplicateResourceException;
+import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
 import ma.onee.dsi.projectportfolio.repository.RoleRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
 import ma.onee.dsi.projectportfolio.security.JwtService;
@@ -39,17 +41,19 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (utilisateurRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Un utilisateur avec cet email existe deja");
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        if (utilisateurRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new DuplicateResourceException("Un utilisateur avec cet email existe deja");
         }
 
         Role defaultRole = roleRepository.findByLibelle(RoleLibelle.ROLE_UTILISATEUR_SIMPLE)
-                .orElseThrow(() -> new IllegalStateException("Role par defaut introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Role par defaut introuvable"));
 
         Utilisateur utilisateur = new Utilisateur();
-        utilisateur.setNom(request.getNom());
-        utilisateur.setPrenom(request.getPrenom());
-        utilisateur.setEmail(request.getEmail());
+        utilisateur.setNom(request.getNom().trim());
+        utilisateur.setPrenom(request.getPrenom().trim());
+        utilisateur.setEmail(normalizedEmail);
         utilisateur.setMotDePasse(passwordEncoder.encode(request.getMotDePasse()));
         utilisateur.setDateDerniereConnexion(LocalDateTime.now());
         utilisateur.setRole(defaultRole);
@@ -65,13 +69,13 @@ public class AuthService {
     public AuthResponse authenticate(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        request.getEmail().trim().toLowerCase(),
                         request.getMotDePasse()
                 )
         );
 
-        Utilisateur utilisateur = utilisateurRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable"));
+        Utilisateur utilisateur = utilisateurRepository.findByEmailIgnoreCase(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
 
         utilisateur.setDateDerniereConnexion(LocalDateTime.now());
         utilisateurRepository.save(utilisateur);

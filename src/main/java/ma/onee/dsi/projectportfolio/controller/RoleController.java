@@ -1,5 +1,6 @@
 package ma.onee.dsi.projectportfolio.controller;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import ma.onee.dsi.projectportfolio.dto.RoleResponse;
 import ma.onee.dsi.projectportfolio.dto.UpdateUserRoleRequest;
@@ -31,7 +32,7 @@ public class RoleController {
     @PutMapping("/utilisateurs/{userId}")
     public ResponseEntity<UtilisateurRoleResponse> updateUserRole(
             @PathVariable Long userId,
-            @RequestBody UpdateUserRoleRequest request
+            @Valid @RequestBody UpdateUserRoleRequest request
     ) {
         return ResponseEntity.ok(roleService.updateUserRole(userId, request.getLibelle()));
     }
