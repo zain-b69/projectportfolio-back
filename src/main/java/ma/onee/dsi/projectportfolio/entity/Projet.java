@@ -2,6 +2,7 @@ package ma.onee.dsi.projectportfolio.entity;
 
 import ma.onee.dsi.projectportfolio.enums.PrioriteProjet;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
+import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
@@ -28,6 +29,7 @@ public class Projet {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idProjet;
 
+    @Column(nullable = false, unique = true)
     private String code;
 
     private String intitule;
