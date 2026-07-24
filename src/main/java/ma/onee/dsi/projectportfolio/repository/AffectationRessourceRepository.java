@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AffectationRessourceRepository extends JpaRepository<AffectationRessource, Long> {
 
     long countByProjet_IdProjet(Long idProjet);
+
+    boolean existsByRessource_IdRessource(Long idRessource);
 }

@@ -1,6 +1,8 @@
 package ma.onee.dsi.projectportfolio.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -9,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import ma.onee.dsi.projectportfolio.enums.NatureRessource;
 
 @Setter
 @Getter
@@ -22,6 +25,9 @@ public class Ressource {
     private String nom;
 
     private String fonction;
+
+    @Enumerated(EnumType.STRING)
+    private NatureRessource nature;
 
     @OneToMany(mappedBy = "ressource")
     private List<AffectationRessource> affectationRessources = new ArrayList<>();
