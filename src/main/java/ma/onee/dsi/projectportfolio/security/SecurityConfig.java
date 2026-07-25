@@ -2,6 +2,7 @@ package ma.onee.dsi.projectportfolio.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -42,9 +43,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/roles/**").hasRole("ADMIN")
                         .requestMatchers("/utilisateurs/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/ressources/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/ressources/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/ressources/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/ressources/**").hasRole("ADMIN")
                         .requestMatchers("/projets/**").authenticated()
                         .anyRequest().authenticated()
                 )
