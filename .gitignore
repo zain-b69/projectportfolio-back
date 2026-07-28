@@ -1,34 +1,39 @@
-codex-output.md
-HELP.md
+# Maven build
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IntelliJ IDEA
+.idea/
 *.iml
+*.iws
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+# VS Code
 .vscode/
+
+# Logs
+logs/
+*.log
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local configuration
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Local Codex report
+codex-output.md
