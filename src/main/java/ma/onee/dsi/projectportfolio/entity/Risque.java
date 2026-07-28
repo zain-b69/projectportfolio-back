@@ -1,6 +1,7 @@
 package ma.onee.dsi.projectportfolio.entity;
 
 import ma.onee.dsi.projectportfolio.enums.NiveauCriticite;
+import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
@@ -22,12 +23,14 @@ public class Risque {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idRisque;
 
+    @Column(nullable = false, length = 1000)
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private NiveauCriticite niveauCriticite;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_projet")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_projet", nullable = false)
     private Projet projet;
 }
