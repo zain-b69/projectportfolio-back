@@ -44,6 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/dashboard").authenticated()
                         .requestMatchers("/roles/**").hasRole("ADMIN")
                         .requestMatchers("/utilisateurs/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/projets/*/risques").authenticated()
