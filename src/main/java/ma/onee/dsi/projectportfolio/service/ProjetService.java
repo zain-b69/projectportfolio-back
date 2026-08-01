@@ -11,7 +11,9 @@ import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
 import ma.onee.dsi.projectportfolio.dto.UpdateProjetRequest;
 import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
+import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
+import ma.onee.dsi.projectportfolio.enums.NiveauCriticite;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
 import ma.onee.dsi.projectportfolio.enums.TypeAction;
@@ -25,9 +27,13 @@ import ma.onee.dsi.projectportfolio.repository.PieceJointeRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.RisqueRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
@@ -222,6 +228,11 @@ public class ProjetService {
                     criteriaBuilder.equal(root.get("priorite"), criteria.getPriorite()));
         }
 
+        if (criteria.getNiveauRisque() != null) {
+            specifications.add((root, query, criteriaBuilder) ->
+                    riskLevelMatches(root, query, criteriaBuilder, criteria.getNiveauRisque()));
+        }
+
         if (criteria.getResponsableId() != null) {
             specifications.add((root, query, criteriaBuilder) ->
                     criteriaBuilder.equal(root.get("utilisateur").get("idUtilisateur"), criteria.getResponsableId()));
@@ -278,6 +289,66 @@ public class ProjetService {
         return specifications.stream()
                 .reduce(Specification::and)
                 .orElse(null);
+    }
+
+    private Predicate riskLevelMatches(
+            Root<Projet> root,
+            jakarta.persistence.criteria.CriteriaQuery<?> query,
+            CriteriaBuilder criteriaBuilder,
+            NiveauCriticite niveauRisque
+    ) {
+        return switch (niveauRisque) {
+            case CRITIQUE -> existsRiskWithLevel(root, query, criteriaBuilder, NiveauCriticite.CRITIQUE);
+            case ELEVE -> criteriaBuilder.and(
+                    existsRiskWithLevel(root, query, criteriaBuilder, NiveauCriticite.ELEVE),
+                    criteriaBuilder.not(existsRiskWithLevel(root, query, criteriaBuilder, NiveauCriticite.CRITIQUE))
+            );
+            case MOYEN -> criteriaBuilder.and(
+                    existsRiskWithLevel(root, query, criteriaBuilder, NiveauCriticite.MOYEN),
+                    criteriaBuilder.not(existsRiskWithAnyLevel(
+                            root,
+                            query,
+                            criteriaBuilder,
+                            List.of(NiveauCriticite.ELEVE, NiveauCriticite.CRITIQUE)
+                    ))
+            );
+            case FAIBLE -> criteriaBuilder.and(
+                    existsRiskWithLevel(root, query, criteriaBuilder, NiveauCriticite.FAIBLE),
+                    criteriaBuilder.not(existsRiskWithAnyLevel(
+                            root,
+                            query,
+                            criteriaBuilder,
+                            List.of(NiveauCriticite.MOYEN, NiveauCriticite.ELEVE, NiveauCriticite.CRITIQUE)
+                    ))
+            );
+        };
+    }
+
+    private Predicate existsRiskWithLevel(
+            Root<Projet> root,
+            jakarta.persistence.criteria.CriteriaQuery<?> query,
+            CriteriaBuilder criteriaBuilder,
+            NiveauCriticite niveauCriticite
+    ) {
+        return existsRiskWithAnyLevel(root, query, criteriaBuilder, List.of(niveauCriticite));
+    }
+
+    private Predicate existsRiskWithAnyLevel(
+            Root<Projet> root,
+            jakarta.persistence.criteria.CriteriaQuery<?> query,
+            CriteriaBuilder criteriaBuilder,
+            List<NiveauCriticite> niveauxCriticite
+    ) {
+        Subquery<Long> subquery = query.subquery(Long.class);
+        Root<Risque> risque = subquery.from(Risque.class);
+
+        subquery.select(risque.get("idRisque"))
+                .where(
+                        criteriaBuilder.equal(risque.get("projet"), root),
+                        risque.get("niveauCriticite").in(niveauxCriticite)
+                );
+
+        return criteriaBuilder.exists(subquery);
     }
 
     private void validateSearchCriteria(ProjetSearchCriteria criteria) {

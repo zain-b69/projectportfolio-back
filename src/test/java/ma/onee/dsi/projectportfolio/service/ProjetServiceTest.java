@@ -18,8 +18,10 @@ import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
 import ma.onee.dsi.projectportfolio.dto.UpdateProjetRequest;
 import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
+import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Role;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
+import ma.onee.dsi.projectportfolio.enums.NiveauCriticite;
 import ma.onee.dsi.projectportfolio.enums.PrioriteProjet;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
@@ -414,6 +416,118 @@ class ProjetServiceSearchSpecificationTest {
         assertThat(projetService.searchProjets(criteria)).isEmpty();
     }
 
+    @Test
+    void searchProjetsFiltersWeakRiskWhenWeakIsMaximumLevel() {
+        persistProjectWithRisks("PRJ-RISK-FAIBLE", StatutProjet.EN_COURS, NiveauCriticite.FAIBLE);
+
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setNiveauRisque(NiveauCriticite.FAIBLE);
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results)
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RISK-FAIBLE");
+    }
+
+    @Test
+    void searchProjetsFiltersMediumRiskWhenMediumIsMaximumLevel() {
+        persistProjectWithRisks(
+                "PRJ-RISK-MOYEN",
+                StatutProjet.EN_COURS,
+                NiveauCriticite.FAIBLE,
+                NiveauCriticite.MOYEN
+        );
+
+        ProjetSearchCriteria mediumCriteria = new ProjetSearchCriteria();
+        mediumCriteria.setNiveauRisque(NiveauCriticite.MOYEN);
+
+        assertThat(projetService.searchProjets(mediumCriteria))
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RISK-MOYEN");
+
+        ProjetSearchCriteria weakCriteria = new ProjetSearchCriteria();
+        weakCriteria.setNiveauRisque(NiveauCriticite.FAIBLE);
+
+        assertThat(projetService.searchProjets(weakCriteria))
+                .extracting(ProjetResponse::getCode)
+                .doesNotContain("PRJ-RISK-MOYEN");
+    }
+
+    @Test
+    void searchProjetsFiltersHighRiskWhenHighIsMaximumLevel() {
+        persistProjectWithRisks(
+                "PRJ-RISK-ELEVE",
+                StatutProjet.EN_COURS,
+                NiveauCriticite.MOYEN,
+                NiveauCriticite.ELEVE
+        );
+
+        ProjetSearchCriteria highCriteria = new ProjetSearchCriteria();
+        highCriteria.setNiveauRisque(NiveauCriticite.ELEVE);
+
+        assertThat(projetService.searchProjets(highCriteria))
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RISK-ELEVE");
+
+        ProjetSearchCriteria mediumCriteria = new ProjetSearchCriteria();
+        mediumCriteria.setNiveauRisque(NiveauCriticite.MOYEN);
+
+        assertThat(projetService.searchProjets(mediumCriteria))
+                .extracting(ProjetResponse::getCode)
+                .doesNotContain("PRJ-RISK-ELEVE");
+    }
+
+    @Test
+    void searchProjetsFiltersCriticalRiskWhenCriticalIsMaximumLevel() {
+        persistProjectWithRisks(
+                "PRJ-RISK-CRITIQUE",
+                StatutProjet.EN_COURS,
+                NiveauCriticite.ELEVE,
+                NiveauCriticite.CRITIQUE
+        );
+
+        ProjetSearchCriteria criticalCriteria = new ProjetSearchCriteria();
+        criticalCriteria.setNiveauRisque(NiveauCriticite.CRITIQUE);
+
+        assertThat(projetService.searchProjets(criticalCriteria))
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RISK-CRITIQUE");
+
+        ProjetSearchCriteria highCriteria = new ProjetSearchCriteria();
+        highCriteria.setNiveauRisque(NiveauCriticite.ELEVE);
+
+        assertThat(projetService.searchProjets(highCriteria))
+                .extracting(ProjetResponse::getCode)
+                .doesNotContain("PRJ-RISK-CRITIQUE");
+    }
+
+    @Test
+    void searchProjetsDoesNotMatchProjectsWithoutRiskForAnyRiskLevelFilter() {
+        for (NiveauCriticite niveauCriticite : NiveauCriticite.values()) {
+            ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+            criteria.setNiveauRisque(niveauCriticite);
+
+            assertThat(projetService.searchProjets(criteria))
+                    .extracting(ProjetResponse::getCode)
+                    .doesNotContain("PRJ-RESEAU", "PRJ-BUDGET");
+        }
+    }
+
+    @Test
+    void searchProjetsCombinesRiskLevelWithExistingStatusFilter() {
+        persistProjectWithRisks("PRJ-RISK-ELEVE-ACTIF", StatutProjet.EN_COURS, NiveauCriticite.ELEVE);
+        persistProjectWithRisks("PRJ-RISK-ELEVE-PLANIFIE", StatutProjet.PLANIFIE, NiveauCriticite.ELEVE);
+
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setNiveauRisque(NiveauCriticite.ELEVE);
+        criteria.setStatut(StatutProjet.EN_COURS);
+
+        assertThat(projetService.searchProjets(criteria))
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RISK-ELEVE-ACTIF");
+    }
+
     private static Stream<Arguments> globalSearchCases() {
         return Stream.of(
                 Arguments.of("reseau", "PRJ-RESEAU"),
@@ -445,6 +559,29 @@ class ProjetServiceSearchSpecificationTest {
         projet.setPriorite(PrioriteProjet.MOYENNE);
         projet.setPourcentageAvancement(0);
         projet.setUtilisateur(utilisateur);
+        return projet;
+    }
+
+    private Projet persistProjectWithRisks(
+            String code,
+            StatutProjet statut,
+            NiveauCriticite... niveauxCriticite
+    ) {
+        Utilisateur utilisateur = utilisateur("Responsable", code, code.toLowerCase() + "@example.com");
+        entityManager.persist(utilisateur);
+        Projet projet = projet(code, code, "Projet avec risques", statut, utilisateur);
+        entityManager.persist(projet);
+
+        for (NiveauCriticite niveauCriticite : niveauxCriticite) {
+            Risque risque = new Risque();
+            risque.setDescription("Risque " + niveauCriticite);
+            risque.setNiveauCriticite(niveauCriticite);
+            risque.setProjet(projet);
+            entityManager.persist(risque);
+        }
+
+        entityManager.flush();
+        entityManager.clear();
         return projet;
     }
 

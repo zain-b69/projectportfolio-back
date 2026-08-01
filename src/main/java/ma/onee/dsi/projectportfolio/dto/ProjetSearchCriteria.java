@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
+import ma.onee.dsi.projectportfolio.enums.NiveauCriticite;
 import ma.onee.dsi.projectportfolio.enums.PrioriteProjet;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,6 +25,8 @@ public class ProjetSearchCriteria {
     private StatutProjet statut;
 
     private PrioriteProjet priorite;
+
+    private NiveauCriticite niveauRisque;
 
     private Long responsableId;
 

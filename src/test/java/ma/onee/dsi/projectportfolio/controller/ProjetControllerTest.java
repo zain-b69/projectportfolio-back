@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.util.List;
 import ma.onee.dsi.projectportfolio.dto.ProjetResponse;
 import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
+import ma.onee.dsi.projectportfolio.enums.NiveauCriticite;
 import ma.onee.dsi.projectportfolio.enums.PrioriteProjet;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
 import ma.onee.dsi.projectportfolio.security.CustomUserDetailsService;
@@ -62,7 +63,8 @@ class ProjetControllerTest {
 
         mockMvc.perform(get("/projets")
                         .with(user("user@example.com").roles("UTILISATEUR_SIMPLE"))
-                        .param("search", "reseau"))
+                        .param("search", "reseau")
+                        .param("niveauRisque", "ELEVE"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<ProjetSearchCriteria> criteriaCaptor =
@@ -70,6 +72,7 @@ class ProjetControllerTest {
         verify(projetService).searchProjets(criteriaCaptor.capture());
 
         assertThat(criteriaCaptor.getValue().getSearch()).isEqualTo("reseau");
+        assertThat(criteriaCaptor.getValue().getNiveauRisque()).isEqualTo(NiveauCriticite.ELEVE);
     }
 
     @Test
@@ -87,6 +90,7 @@ class ProjetControllerTest {
                         .param("code", "PRJ")
                         .param("statut", "EN_COURS")
                         .param("priorite", "ELEVEE")
+                        .param("niveauRisque", "ELEVE")
                         .param("budgetMin", "1000.00")
                         .param("avancementMax", "80"))
                 .andExpect(status().isOk())
@@ -111,8 +115,19 @@ class ProjetControllerTest {
         assertThat(criteria.getCode()).isEqualTo("PRJ");
         assertThat(criteria.getStatut()).isEqualTo(StatutProjet.EN_COURS);
         assertThat(criteria.getPriorite()).isEqualTo(PrioriteProjet.ELEVEE);
+        assertThat(criteria.getNiveauRisque()).isEqualTo(NiveauCriticite.ELEVE);
         assertThat(criteria.getBudgetMin()).isEqualByComparingTo("1000.00");
         assertThat(criteria.getAvancementMax()).isEqualTo(80);
+    }
+
+    @Test
+    void searchProjetsInvalidRiskLevelReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/projets")
+                        .with(user("user@example.com").roles("UTILISATEUR_SIMPLE"))
+                        .param("niveauRisque", "INCONNU"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(projetService, projetExportService);
     }
 
     @Test
