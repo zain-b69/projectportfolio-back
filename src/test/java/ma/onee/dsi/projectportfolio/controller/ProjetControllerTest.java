@@ -56,6 +56,23 @@ class ProjetControllerTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
+    void searchProjetsPassesSearchCriteria() throws Exception {
+        when(projetService.searchProjets(org.mockito.ArgumentMatchers.any(ProjetSearchCriteria.class)))
+                .thenReturn(List.of(response()));
+
+        mockMvc.perform(get("/projets")
+                        .with(user("user@example.com").roles("UTILISATEUR_SIMPLE"))
+                        .param("search", "reseau"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<ProjetSearchCriteria> criteriaCaptor =
+                ArgumentCaptor.forClass(ProjetSearchCriteria.class);
+        verify(projetService).searchProjets(criteriaCaptor.capture());
+
+        assertThat(criteriaCaptor.getValue().getSearch()).isEqualTo("reseau");
+    }
+
+    @Test
     void exportProjetsAuthenticatedUserReturnsExcelFileAndPassesCriteriaAndResults() throws Exception {
         List<ProjetResponse> projets = List.of(response());
         byte[] exportContent = new byte[] {1, 2, 3, 4};
@@ -66,6 +83,7 @@ class ProjetControllerTest {
 
         mockMvc.perform(get("/projets/export")
                         .with(user("user@example.com").roles("UTILISATEUR_SIMPLE"))
+                        .param("search", "reseau")
                         .param("code", "PRJ")
                         .param("statut", "EN_COURS")
                         .param("priorite", "ELEVEE")
@@ -89,6 +107,7 @@ class ProjetControllerTest {
         verify(projetExportService).exportProjects(same(projets));
 
         ProjetSearchCriteria criteria = criteriaCaptor.getValue();
+        assertThat(criteria.getSearch()).isEqualTo("reseau");
         assertThat(criteria.getCode()).isEqualTo("PRJ");
         assertThat(criteria.getStatut()).isEqualTo(StatutProjet.EN_COURS);
         assertThat(criteria.getPriorite()).isEqualTo(PrioriteProjet.ELEVEE);

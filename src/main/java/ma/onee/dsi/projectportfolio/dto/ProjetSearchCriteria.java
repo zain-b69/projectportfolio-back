@@ -15,6 +15,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 @Setter
 public class ProjetSearchCriteria {
 
+    private String search;
+
     private String code;
 
     private String intitule;

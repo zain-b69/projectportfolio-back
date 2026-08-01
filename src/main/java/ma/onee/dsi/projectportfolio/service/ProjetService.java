@@ -25,6 +25,9 @@ import ma.onee.dsi.projectportfolio.repository.PieceJointeRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.RisqueRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
@@ -166,6 +169,38 @@ public class ProjetService {
         }
 
         List<Specification<Projet>> specifications = new ArrayList<>();
+
+        if (hasText(criteria.getSearch())) {
+            specifications.add((root, query, criteriaBuilder) -> {
+                Join<Projet, Utilisateur> utilisateur = root.join("utilisateur", JoinType.LEFT);
+                String searchPattern = contains(criteria.getSearch());
+                Expression<String> prenomNom = criteriaBuilder.concat(
+                        criteriaBuilder.concat(
+                                criteriaBuilder.coalesce(utilisateur.get("prenom"), ""),
+                                " "
+                        ),
+                        criteriaBuilder.coalesce(utilisateur.get("nom"), "")
+                );
+                Expression<String> nomPrenom = criteriaBuilder.concat(
+                        criteriaBuilder.concat(
+                                criteriaBuilder.coalesce(utilisateur.get("nom"), ""),
+                                " "
+                        ),
+                        criteriaBuilder.coalesce(utilisateur.get("prenom"), "")
+                );
+
+                return criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("intitule")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("descriptif")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(utilisateur.get("nom")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(utilisateur.get("prenom")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(utilisateur.get("email")), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(prenomNom), searchPattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(nomPrenom), searchPattern)
+                );
+            });
+        }
 
         if (hasText(criteria.getCode())) {
             specifications.add((root, query, criteriaBuilder) ->

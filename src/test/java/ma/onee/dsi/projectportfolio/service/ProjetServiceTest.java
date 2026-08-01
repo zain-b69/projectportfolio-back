@@ -9,9 +9,12 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import ma.onee.dsi.projectportfolio.dto.CreateProjetRequest;
 import ma.onee.dsi.projectportfolio.dto.ProjetResponse;
+import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
 import ma.onee.dsi.projectportfolio.dto.UpdateProjetRequest;
 import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
@@ -31,10 +34,17 @@ import ma.onee.dsi.projectportfolio.repository.RisqueRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
@@ -302,5 +312,148 @@ class ProjetServiceTest {
         Role role = new Role();
         role.setLibelle(roleLibelle);
         return role;
+    }
+}
+
+@DataJpaTest
+class ProjetServiceSearchSpecificationTest {
+
+    @Autowired
+    private ProjetRepository projetRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    private ProjetService projetService;
+
+    @BeforeEach
+    void setUp() {
+        projetService = new ProjetService(
+                projetRepository,
+                Mockito.mock(UtilisateurRepository.class),
+                Mockito.mock(HistoriqueModificationRepository.class),
+                Mockito.mock(CoutRepository.class),
+                Mockito.mock(RisqueRepository.class),
+                Mockito.mock(PieceJointeRepository.class),
+                Mockito.mock(AffectationRessourceRepository.class)
+        );
+
+        Utilisateur sara = utilisateur("Alami", "Sara", "sara.alami@example.com");
+        Utilisateur yassine = utilisateur("Bennis", "Yassine", "yassine.bennis@example.com");
+        entityManager.persist(sara);
+        entityManager.persist(yassine);
+        entityManager.persist(projet(
+                "PRJ-RESEAU",
+                "Migration fibre",
+                "Modernisation de l'infrastructure LAN",
+                StatutProjet.EN_COURS,
+                sara
+        ));
+        entityManager.persist(projet(
+                "PRJ-BUDGET",
+                "Suivi financier",
+                "Controle des enveloppes budgetaires",
+                StatutProjet.PLANIFIE,
+                yassine
+        ));
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    @ParameterizedTest
+    @MethodSource("globalSearchCases")
+    void searchProjetsFindsProjectsByGlobalSearch(String search, String expectedCode) {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setSearch(search);
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results)
+                .extracting(ProjetResponse::getCode)
+                .containsExactly(expectedCode);
+    }
+
+    @Test
+    void searchProjetsIgnoresCaseAndTrimsSearchValue() {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setSearch("  MIGRATION  ");
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results)
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RESEAU");
+    }
+
+    @Test
+    void searchProjetsIgnoresBlankSearchValue() {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setSearch("   ");
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results)
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-BUDGET", "PRJ-RESEAU");
+    }
+
+    @Test
+    void searchProjetsCombinesGlobalSearchWithExistingFilters() {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setSearch("prj");
+        criteria.setStatut(StatutProjet.EN_COURS);
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results)
+                .extracting(ProjetResponse::getCode)
+                .containsExactly("PRJ-RESEAU");
+
+        criteria.setStatut(StatutProjet.TERMINE);
+
+        assertThat(projetService.searchProjets(criteria)).isEmpty();
+    }
+
+    private static Stream<Arguments> globalSearchCases() {
+        return Stream.of(
+                Arguments.of("reseau", "PRJ-RESEAU"),
+                Arguments.of("migration", "PRJ-RESEAU"),
+                Arguments.of("infrastructure", "PRJ-RESEAU"),
+                Arguments.of("alami", "PRJ-RESEAU"),
+                Arguments.of("sara", "PRJ-RESEAU"),
+                Arguments.of("sara.alami@example.com", "PRJ-RESEAU"),
+                Arguments.of("sara alami", "PRJ-RESEAU"),
+                Arguments.of("alami sara", "PRJ-RESEAU")
+        );
+    }
+
+    private Projet projet(
+            String code,
+            String intitule,
+            String descriptif,
+            StatutProjet statut,
+            Utilisateur utilisateur
+    ) {
+        Projet projet = new Projet();
+        projet.setCode(code);
+        projet.setIntitule(intitule);
+        projet.setDescriptif(descriptif);
+        projet.setDateDebutPrevue(LocalDate.of(2026, 1, 1));
+        projet.setDateFinPrevue(LocalDate.of(2026, 12, 31));
+        projet.setStatut(statut);
+        projet.setBudgetPrevisionnel(new BigDecimal("10000.00"));
+        projet.setPriorite(PrioriteProjet.MOYENNE);
+        projet.setPourcentageAvancement(0);
+        projet.setUtilisateur(utilisateur);
+        return projet;
+    }
+
+    private Utilisateur utilisateur(String nom, String prenom, String email) {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setNom(nom);
+        utilisateur.setPrenom(prenom);
+        utilisateur.setEmail(email);
+        utilisateur.setMotDePasse("secret");
+        return utilisateur;
     }
 }
