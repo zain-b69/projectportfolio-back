@@ -528,6 +528,73 @@ class ProjetServiceSearchSpecificationTest {
                 .containsExactly("PRJ-RISK-ELEVE-ACTIF");
     }
 
+    @Test
+    void searchProjetsMapsNullRiskLevelWhenProjectHasNoRisk() {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setCode("PRJ-RESEAU");
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getNiveauRisque()).isNull();
+    }
+
+    @Test
+    void searchProjetsMapsWeakRiskLevelWhenProjectHasOnlyWeakRisk() {
+        persistProjectWithRisks("PRJ-MAP-FAIBLE", StatutProjet.EN_COURS, NiveauCriticite.FAIBLE);
+
+        ProjetResponse response = findProjectByCode("PRJ-MAP-FAIBLE");
+
+        assertThat(response.getNiveauRisque()).isEqualTo(NiveauCriticite.FAIBLE);
+    }
+
+    @Test
+    void searchProjetsMapsMediumRiskLevelWhenProjectHasWeakAndMediumRisks() {
+        persistProjectWithRisks(
+                "PRJ-MAP-MOYEN",
+                StatutProjet.EN_COURS,
+                NiveauCriticite.FAIBLE,
+                NiveauCriticite.MOYEN
+        );
+
+        ProjetResponse response = findProjectByCode("PRJ-MAP-MOYEN");
+
+        assertThat(response.getNiveauRisque()).isEqualTo(NiveauCriticite.MOYEN);
+    }
+
+    @Test
+    void searchProjetsMapsCriticalRiskLevelWhenProjectHasHighAndCriticalRisks() {
+        persistProjectWithRisks(
+                "PRJ-MAP-CRITIQUE",
+                StatutProjet.EN_COURS,
+                NiveauCriticite.ELEVE,
+                NiveauCriticite.CRITIQUE
+        );
+
+        ProjetResponse response = findProjectByCode("PRJ-MAP-CRITIQUE");
+
+        assertThat(response.getNiveauRisque()).isEqualTo(NiveauCriticite.CRITIQUE);
+    }
+
+    @Test
+    void searchProjetsKeepsOtherMappedFieldsWhenAddingRiskLevel() {
+        persistProjectWithRisks("PRJ-MAP-FIELDS", StatutProjet.EN_COURS, NiveauCriticite.ELEVE);
+
+        ProjetResponse response = findProjectByCode("PRJ-MAP-FIELDS");
+
+        assertThat(response.getCode()).isEqualTo("PRJ-MAP-FIELDS");
+        assertThat(response.getIntitule()).isEqualTo("PRJ-MAP-FIELDS");
+        assertThat(response.getDescriptif()).isEqualTo("Projet avec risques");
+        assertThat(response.getStatut()).isEqualTo(StatutProjet.EN_COURS.name());
+        assertThat(response.getPriorite()).isEqualTo(PrioriteProjet.MOYENNE.name());
+        assertThat(response.getBudgetPrevisionnel()).isEqualByComparingTo("10000.00");
+        assertThat(response.getPourcentageAvancement()).isZero();
+        assertThat(response.getNomResponsable()).isEqualTo("Responsable");
+        assertThat(response.getPrenomResponsable()).isEqualTo("PRJ-MAP-FIELDS");
+        assertThat(response.getEmailResponsable()).isEqualTo("prj-map-fields@example.com");
+        assertThat(response.getNiveauRisque()).isEqualTo(NiveauCriticite.ELEVE);
+    }
+
     private static Stream<Arguments> globalSearchCases() {
         return Stream.of(
                 Arguments.of("reseau", "PRJ-RESEAU"),
@@ -583,6 +650,16 @@ class ProjetServiceSearchSpecificationTest {
         entityManager.flush();
         entityManager.clear();
         return projet;
+    }
+
+    private ProjetResponse findProjectByCode(String code) {
+        ProjetSearchCriteria criteria = new ProjetSearchCriteria();
+        criteria.setCode(code);
+
+        List<ProjetResponse> results = projetService.searchProjets(criteria);
+
+        assertThat(results).hasSize(1);
+        return results.get(0);
     }
 
     private Utilisateur utilisateur(String nom, String prenom, String email) {

@@ -573,12 +573,45 @@ public class ProjetService {
                 .statut(projet.getStatut() != null ? projet.getStatut().name() : null)
                 .budgetPrevisionnel(projet.getBudgetPrevisionnel())
                 .priorite(projet.getPriorite() != null ? projet.getPriorite().name() : null)
+                .niveauRisque(maxRiskLevel(projet))
                 .pourcentageAvancement(projet.getPourcentageAvancement())
                 .idResponsable(responsable != null ? responsable.getIdUtilisateur() : null)
                 .nomResponsable(responsable != null ? responsable.getNom() : null)
                 .prenomResponsable(responsable != null ? responsable.getPrenom() : null)
                 .emailResponsable(responsable != null ? responsable.getEmail() : null)
                 .build();
+    }
+
+    private NiveauCriticite maxRiskLevel(Projet projet) {
+        boolean hasFaible = false;
+        boolean hasMoyen = false;
+        boolean hasEleve = false;
+
+        for (Risque risque : projet.getRisques()) {
+            if (risque.getNiveauCriticite() == null) {
+                continue;
+            }
+
+            switch (risque.getNiveauCriticite()) {
+                case CRITIQUE -> {
+                    return NiveauCriticite.CRITIQUE;
+                }
+                case ELEVE -> hasEleve = true;
+                case MOYEN -> hasMoyen = true;
+                case FAIBLE -> hasFaible = true;
+            }
+        }
+
+        if (hasEleve) {
+            return NiveauCriticite.ELEVE;
+        }
+        if (hasMoyen) {
+            return NiveauCriticite.MOYEN;
+        }
+        if (hasFaible) {
+            return NiveauCriticite.FAIBLE;
+        }
+        return null;
     }
 
     private String normalizeRequiredText(String value) {
