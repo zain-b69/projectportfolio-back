@@ -8,6 +8,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +26,7 @@ public class PieceJointe {
 
     private String cheminFichier;
 
-    private LocalDate dateAjout;
+    private LocalDateTime dateAjout;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_projet")

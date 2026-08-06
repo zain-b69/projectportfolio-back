@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,22 +26,25 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomUserDetailsService customUserDetailsService;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService customUserDetailsService
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.customUserDetailsService = customUserDetailsService;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider
+    ) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -48,17 +52,25 @@ public class SecurityConfig {
                         .requestMatchers("/roles/**").hasRole("ADMIN")
                         .requestMatchers("/utilisateurs/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/projets/*/risques").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/projets/*/risques").hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.POST, "/projets/*/risques")
+                        .hasRole("RESPONSABLE_PROJET")
                         .requestMatchers(HttpMethod.GET, "/risques/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/risques/**").hasRole("RESPONSABLE_PROJET")
-                        .requestMatchers(HttpMethod.DELETE, "/risques/**").hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.PUT, "/risques/**")
+                        .hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.DELETE, "/risques/**")
+                        .hasRole("RESPONSABLE_PROJET")
                         .requestMatchers(HttpMethod.GET, "/projets/*/couts").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/projets/*/couts").hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.POST, "/projets/*/couts")
+                        .hasRole("RESPONSABLE_PROJET")
                         .requestMatchers(HttpMethod.GET, "/couts/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/couts/**").hasRole("RESPONSABLE_PROJET")
-                        .requestMatchers(HttpMethod.DELETE, "/couts/**").hasRole("RESPONSABLE_PROJET")
-                        .requestMatchers(HttpMethod.GET, "/projets/*/affectations-ressources").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/projets/*/affectations-ressources/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/couts/**")
+                        .hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.DELETE, "/couts/**")
+                        .hasRole("RESPONSABLE_PROJET")
+                        .requestMatchers(HttpMethod.GET, "/projets/*/affectations-ressources")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/projets/*/affectations-ressources/**")
+                        .authenticated()
                         .requestMatchers(HttpMethod.POST, "/projets/*/affectations-ressources")
                         .hasAnyRole("ADMIN", "RESPONSABLE_PROJET")
                         .requestMatchers(HttpMethod.POST, "/projets/*/affectations-ressources/**")
@@ -67,7 +79,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "RESPONSABLE_PROJET")
                         .requestMatchers(HttpMethod.DELETE, "/projets/*/affectations-ressources/**")
                         .hasAnyRole("ADMIN", "RESPONSABLE_PROJET")
-                        .requestMatchers(HttpMethod.GET, "/ressources/*/affectations").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/ressources/*/affectations")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/ressources/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/ressources/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/ressources/**").hasRole("ADMIN")
@@ -75,18 +88,26 @@ public class SecurityConfig {
                         .requestMatchers("/projets/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
     @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+    public AuthenticationProvider authenticationProvider(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder
+    ) {
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
     }
 
     @Bean
@@ -104,11 +125,20 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedMethods(
+                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        );
+        configuration.setAllowedHeaders(
+                List.of("Authorization", "Content-Type")
+        );
+        configuration.setExposedHeaders(
+                List.of("Content-Disposition")
+        );
         configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
 
         return source;

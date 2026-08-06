@@ -1,5 +1,8 @@
 package ma.onee.dsi.projectportfolio.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
@@ -20,6 +23,9 @@ import ma.onee.dsi.projectportfolio.dto.ApiErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
@@ -136,6 +142,7 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
+        log.error("Unhandled exception [{} {}]", request.getMethod(), request.getRequestURI(), ex);
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Une erreur interne est survenue",
