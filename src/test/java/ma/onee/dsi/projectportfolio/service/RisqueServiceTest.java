@@ -14,7 +14,6 @@ import java.util.Optional;
 import ma.onee.dsi.projectportfolio.dto.CreateRisqueRequest;
 import ma.onee.dsi.projectportfolio.dto.RisqueResponse;
 import ma.onee.dsi.projectportfolio.dto.UpdateRisqueRequest;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Role;
@@ -25,7 +24,6 @@ import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
 import ma.onee.dsi.projectportfolio.enums.StatutProjet;
 import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.RisqueRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
@@ -50,7 +48,7 @@ class RisqueServiceTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Mock
-    private HistoriqueModificationRepository historiqueModificationRepository;
+    private HistoriqueService historiqueService;
 
     private RisqueService risqueService;
 
@@ -60,7 +58,7 @@ class RisqueServiceTest {
                 risqueRepository,
                 projetRepository,
                 utilisateurRepository,
-                historiqueModificationRepository
+                historiqueService
         );
     }
 
@@ -121,12 +119,18 @@ class RisqueServiceTest {
         assertThat(risqueCaptor.getValue().getDescription()).isEqualTo("Risque budget");
         assertThat(risqueCaptor.getValue().getProjet()).isSameAs(projet);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.AJOUT_RISQUE);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.AJOUT_RISQUE);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
     }
 
     @Test
@@ -142,7 +146,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).save(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -157,7 +161,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).save(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -172,7 +176,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).save(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -194,10 +198,16 @@ class RisqueServiceTest {
 
         verify(risqueRepository).save(risque);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.MODIFICATION);
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.MODIFICATION);
     }
 
     @Test
@@ -213,7 +223,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).save(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -229,7 +239,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).save(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -245,12 +255,18 @@ class RisqueServiceTest {
 
         verify(risqueRepository).delete(risque);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.SUPPRESSION);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.SUPPRESSION);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
     }
 
     @Test
@@ -266,7 +282,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).delete(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -282,7 +298,7 @@ class RisqueServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(risqueRepository, never()).delete(any(Risque.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test

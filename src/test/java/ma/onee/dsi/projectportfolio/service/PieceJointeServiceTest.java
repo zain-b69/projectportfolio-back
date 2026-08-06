@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Optional;
 import ma.onee.dsi.projectportfolio.dto.PieceJointeDownloadResponse;
 import ma.onee.dsi.projectportfolio.dto.PieceJointeResponse;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.PieceJointe;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Role;
@@ -26,7 +25,6 @@ import ma.onee.dsi.projectportfolio.enums.StatutProjet;
 import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.BusinessRuleException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.PieceJointeRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
@@ -55,7 +53,7 @@ class PieceJointeServiceTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Mock
-    private HistoriqueModificationRepository historiqueModificationRepository;
+    private HistoriqueService historiqueService;
 
     @Mock
     private FileStorageService fileStorageService;
@@ -68,7 +66,7 @@ class PieceJointeServiceTest {
                 pieceJointeRepository,
                 projetRepository,
                 utilisateurRepository,
-                historiqueModificationRepository,
+                historiqueService,
                 fileStorageService
         );
     }
@@ -101,13 +99,19 @@ class PieceJointeServiceTest {
         assertThat(pieceJointeCaptor.getValue().getCheminFichier()).isEqualTo("uploads/projets/10/generated.pdf");
         assertThat(pieceJointeCaptor.getValue().getProjet()).isSameAs(projet);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.AJOUT_PIECE_JOINTE);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
-        assertThat(historiqueCaptor.getValue().getDescription()).contains("Ajout de la piece jointe planning.pdf");
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.AJOUT_PIECE_JOINTE);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Ajout de la piece jointe planning.pdf");
     }
 
     @Test
@@ -135,7 +139,7 @@ class PieceJointeServiceTest {
 
         verify(fileStorageService, never()).save(any(Long.class), any(MultipartFile.class));
         verify(pieceJointeRepository, never()).save(any(PieceJointe.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -199,13 +203,19 @@ class PieceJointeServiceTest {
         verify(fileStorageService).delete("uploads/projets/10/generated.pdf");
         verify(pieceJointeRepository).delete(pieceJointe);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.SUPPRESSION);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
-        assertThat(historiqueCaptor.getValue().getDescription()).contains("Suppression de la piece jointe 20");
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.SUPPRESSION);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Suppression de la piece jointe 20");
     }
 
     @Test
@@ -222,7 +232,7 @@ class PieceJointeServiceTest {
 
         verify(fileStorageService, never()).delete(any(String.class));
         verify(pieceJointeRepository, never()).delete(any(PieceJointe.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     private MockMultipartFile file(String filename, String content) {

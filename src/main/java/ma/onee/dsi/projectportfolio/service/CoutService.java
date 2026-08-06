@@ -8,7 +8,6 @@ import ma.onee.dsi.projectportfolio.dto.CoutResponse;
 import ma.onee.dsi.projectportfolio.dto.CreateCoutRequest;
 import ma.onee.dsi.projectportfolio.dto.UpdateCoutRequest;
 import ma.onee.dsi.projectportfolio.entity.Cout;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
@@ -17,7 +16,6 @@ import ma.onee.dsi.projectportfolio.enums.TypeCout;
 import ma.onee.dsi.projectportfolio.exception.BusinessRuleException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
 import ma.onee.dsi.projectportfolio.repository.CoutRepository;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,18 +28,18 @@ public class CoutService {
     private final CoutRepository coutRepository;
     private final ProjetRepository projetRepository;
     private final UtilisateurRepository utilisateurRepository;
-    private final HistoriqueModificationRepository historiqueModificationRepository;
+    private final HistoriqueService historiqueService;
 
     public CoutService(
             CoutRepository coutRepository,
             ProjetRepository projetRepository,
             UtilisateurRepository utilisateurRepository,
-            HistoriqueModificationRepository historiqueModificationRepository
+            HistoriqueService historiqueService
     ) {
         this.coutRepository = coutRepository;
         this.projetRepository = projetRepository;
         this.utilisateurRepository = utilisateurRepository;
-        this.historiqueModificationRepository = historiqueModificationRepository;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +70,7 @@ public class CoutService {
         cout.setProjet(projet);
 
         Cout savedCout = coutRepository.save(cout);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.AJOUT_COUT,
@@ -95,7 +93,7 @@ public class CoutService {
         cout.setDateCout(request.getDateCout());
 
         Cout savedCout = coutRepository.save(cout);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.MODIFICATION,
@@ -113,7 +111,7 @@ public class CoutService {
         assertResponsibleProjectManager(projet, currentUser);
 
         coutRepository.delete(cout);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.SUPPRESSION,
@@ -168,17 +166,6 @@ public class CoutService {
         if (dateCout == null) {
             throw new BusinessRuleException("La date du cout est obligatoire");
         }
-    }
-
-    private void recordHistory(Projet projet, Utilisateur utilisateur, TypeAction typeAction, String description) {
-        HistoriqueModification historiqueModification = new HistoriqueModification();
-        historiqueModification.setDateModification(LocalDate.now());
-        historiqueModification.setUtilisateur(utilisateur);
-        historiqueModification.setProjet(projet);
-        historiqueModification.setTypeAction(typeAction);
-        historiqueModification.setDescription(description);
-
-        historiqueModificationRepository.save(historiqueModification);
     }
 
     private CoutResponse mapToResponse(Cout cout) {

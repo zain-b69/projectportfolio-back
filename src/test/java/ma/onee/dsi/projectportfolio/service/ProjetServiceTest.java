@@ -16,7 +16,6 @@ import ma.onee.dsi.projectportfolio.dto.CreateProjetRequest;
 import ma.onee.dsi.projectportfolio.dto.ProjetResponse;
 import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
 import ma.onee.dsi.projectportfolio.dto.UpdateProjetRequest;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Role;
@@ -62,6 +61,9 @@ class ProjetServiceTest {
     private HistoriqueModificationRepository historiqueModificationRepository;
 
     @Mock
+    private HistoriqueService historiqueService;
+
+    @Mock
     private CoutRepository coutRepository;
 
     @Mock
@@ -81,6 +83,7 @@ class ProjetServiceTest {
                 projetRepository,
                 utilisateurRepository,
                 historiqueModificationRepository,
+                historiqueService,
                 coutRepository,
                 risqueRepository,
                 pieceJointeRepository,
@@ -107,15 +110,20 @@ class ProjetServiceTest {
         assertThat(response.getIdResponsable()).isEqualTo(1L);
         assertThat(response.getEmailResponsable()).isEqualTo("pm@example.com");
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
 
-        HistoriqueModification historique = historiqueCaptor.getValue();
-        assertThat(historique.getTypeAction()).isEqualTo(TypeAction.CREATION);
-        assertThat(historique.getUtilisateur()).isSameAs(projectManager);
-        assertThat(historique.getProjet().getCode()).isEqualTo("PRJ-001");
-        assertThat(historique.getDescription()).contains("Creation du projet PRJ-001");
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.CREATION);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueProjetCaptor.getValue().getCode()).isEqualTo("PRJ-001");
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Creation du projet PRJ-001");
     }
 
     @Test
@@ -128,7 +136,7 @@ class ProjetServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(projetRepository, never()).save(any(Projet.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -144,15 +152,20 @@ class ProjetServiceTest {
         verify(historiqueModificationRepository).detachProjet(20L);
         verify(projetRepository).delete(projet);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
 
-        HistoriqueModification historique = historiqueCaptor.getValue();
-        assertThat(historique.getTypeAction()).isEqualTo(TypeAction.SUPPRESSION);
-        assertThat(historique.getUtilisateur()).isSameAs(projectManager);
-        assertThat(historique.getProjet()).isNull();
-        assertThat(historique.getDescription()).contains("Suppression du projet PRJ-001");
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.SUPPRESSION);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueProjetCaptor.getValue()).isNull();
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Suppression du projet PRJ-001");
     }
 
     @Test
@@ -166,7 +179,7 @@ class ProjetServiceTest {
 
         verify(projetRepository, never()).delete(any(Projet.class));
         verify(historiqueModificationRepository, never()).detachProjet(any(Long.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -183,7 +196,7 @@ class ProjetServiceTest {
 
         verify(projetRepository, never()).delete(any(Projet.class));
         verify(historiqueModificationRepository, never()).detachProjet(any(Long.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -201,7 +214,7 @@ class ProjetServiceTest {
 
         verify(projetRepository, never()).delete(any(Projet.class));
         verify(historiqueModificationRepository, never()).detachProjet(any(Long.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -217,7 +230,7 @@ class ProjetServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(projetRepository, never()).save(any(Projet.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -234,7 +247,7 @@ class ProjetServiceTest {
                 .hasMessageContaining("fin prevue");
 
         verify(projetRepository, never()).save(any(Projet.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -254,7 +267,7 @@ class ProjetServiceTest {
                 .hasMessageContaining("avancement egal a 100");
 
         verify(projetRepository, never()).save(any(Projet.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     private CreateProjetRequest plannedProjectRequest() {
@@ -334,6 +347,7 @@ class ProjetServiceSearchSpecificationTest {
                 projetRepository,
                 Mockito.mock(UtilisateurRepository.class),
                 Mockito.mock(HistoriqueModificationRepository.class),
+                Mockito.mock(HistoriqueService.class),
                 Mockito.mock(CoutRepository.class),
                 Mockito.mock(RisqueRepository.class),
                 Mockito.mock(PieceJointeRepository.class),

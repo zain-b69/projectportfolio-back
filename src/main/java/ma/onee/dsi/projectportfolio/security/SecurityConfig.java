@@ -86,6 +86,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/ressources/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/ressources/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/rapports/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/historique").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/projets/*/historique").authenticated()
                         .requestMatchers("/projets/**").authenticated()
                         .anyRequest().authenticated()
                 )

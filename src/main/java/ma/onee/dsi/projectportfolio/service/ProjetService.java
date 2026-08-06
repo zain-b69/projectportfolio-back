@@ -9,7 +9,6 @@ import ma.onee.dsi.projectportfolio.dto.CreateProjetRequest;
 import ma.onee.dsi.projectportfolio.dto.ProjetResponse;
 import ma.onee.dsi.projectportfolio.dto.ProjetSearchCriteria;
 import ma.onee.dsi.projectportfolio.dto.UpdateProjetRequest;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
@@ -46,6 +45,7 @@ public class ProjetService {
     private final ProjetRepository projetRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final HistoriqueModificationRepository historiqueModificationRepository;
+    private final HistoriqueService historiqueService;
     private final CoutRepository coutRepository;
     private final RisqueRepository risqueRepository;
     private final PieceJointeRepository pieceJointeRepository;
@@ -55,6 +55,7 @@ public class ProjetService {
             ProjetRepository projetRepository,
             UtilisateurRepository utilisateurRepository,
             HistoriqueModificationRepository historiqueModificationRepository,
+            HistoriqueService historiqueService,
             CoutRepository coutRepository,
             RisqueRepository risqueRepository,
             PieceJointeRepository pieceJointeRepository,
@@ -63,6 +64,7 @@ public class ProjetService {
         this.projetRepository = projetRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.historiqueModificationRepository = historiqueModificationRepository;
+        this.historiqueService = historiqueService;
         this.coutRepository = coutRepository;
         this.risqueRepository = risqueRepository;
         this.pieceJointeRepository = pieceJointeRepository;
@@ -111,7 +113,7 @@ public class ProjetService {
         projet.setUtilisateur(currentUser);
 
         Projet savedProjet = projetRepository.save(projet);
-        recordHistory(savedProjet, currentUser, TypeAction.CREATION, "Creation du projet " + savedProjet.getCode());
+        historiqueService.record(savedProjet, currentUser, TypeAction.CREATION, "Creation du projet " + savedProjet.getCode());
 
         return mapProjet(savedProjet);
     }
@@ -144,7 +146,7 @@ public class ProjetService {
         applyRequestToProjet(projet, request, normalizedCode);
 
         Projet savedProjet = projetRepository.save(projet);
-        recordHistory(savedProjet, currentUser, TypeAction.MODIFICATION, "Modification du projet " + savedProjet.getCode());
+        historiqueService.record(savedProjet, currentUser, TypeAction.MODIFICATION, "Modification du projet " + savedProjet.getCode());
 
         return mapProjet(savedProjet);
     }
@@ -161,7 +163,7 @@ public class ProjetService {
         String projectCode = projet.getCode();
         historiqueModificationRepository.detachProjet(projectId);
         projetRepository.delete(projet);
-        recordHistory(
+        historiqueService.record(
                 null,
                 currentUser,
                 TypeAction.SUPPRESSION,
@@ -521,17 +523,6 @@ public class ProjetService {
         projet.setBudgetPrevisionnel(request.getBudgetPrevisionnel());
         projet.setPriorite(request.getPriorite());
         projet.setPourcentageAvancement(request.getPourcentageAvancement());
-    }
-
-    private void recordHistory(Projet projet, Utilisateur utilisateur, TypeAction typeAction, String description) {
-        HistoriqueModification historiqueModification = new HistoriqueModification();
-        historiqueModification.setDateModification(LocalDate.now());
-        historiqueModification.setUtilisateur(utilisateur);
-        historiqueModification.setProjet(projet);
-        historiqueModification.setTypeAction(typeAction);
-        historiqueModification.setDescription(description);
-
-        historiqueModificationRepository.save(historiqueModification);
     }
 
     private Projet findProjetById(Long projectId) {

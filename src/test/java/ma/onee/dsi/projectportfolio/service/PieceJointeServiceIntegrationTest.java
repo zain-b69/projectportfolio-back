@@ -28,7 +28,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 @DataJpaTest
-@Import({PieceJointeService.class, FileStorageService.class})
+@Import({PieceJointeService.class, FileStorageService.class, HistoriqueService.class})
 class PieceJointeServiceIntegrationTest {
 
     @TempDir

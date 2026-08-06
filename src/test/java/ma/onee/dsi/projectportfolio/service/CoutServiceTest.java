@@ -15,7 +15,6 @@ import ma.onee.dsi.projectportfolio.dto.CoutResponse;
 import ma.onee.dsi.projectportfolio.dto.CreateCoutRequest;
 import ma.onee.dsi.projectportfolio.dto.UpdateCoutRequest;
 import ma.onee.dsi.projectportfolio.entity.Cout;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Role;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
@@ -27,7 +26,6 @@ import ma.onee.dsi.projectportfolio.enums.TypeCout;
 import ma.onee.dsi.projectportfolio.exception.BusinessRuleException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
 import ma.onee.dsi.projectportfolio.repository.CoutRepository;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +49,7 @@ class CoutServiceTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Mock
-    private HistoriqueModificationRepository historiqueModificationRepository;
+    private HistoriqueService historiqueService;
 
     private CoutService coutService;
 
@@ -61,7 +59,7 @@ class CoutServiceTest {
                 coutRepository,
                 projetRepository,
                 utilisateurRepository,
-                historiqueModificationRepository
+                historiqueService
         );
     }
 
@@ -157,13 +155,19 @@ class CoutServiceTest {
         assertThat(coutCaptor.getValue().getDateCout()).isEqualTo(LocalDate.of(2026, 2, 1));
         assertThat(coutCaptor.getValue().getProjet()).isSameAs(projet);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.AJOUT_COUT);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
-        assertThat(historiqueCaptor.getValue().getDescription()).contains("Ajout du cout 20 au projet PRJ-001");
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.AJOUT_COUT);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Ajout du cout 20 au projet PRJ-001");
     }
 
     @Test
@@ -178,7 +182,7 @@ class CoutServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(coutRepository, never()).save(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -193,7 +197,7 @@ class CoutServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(coutRepository, never()).save(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -208,7 +212,7 @@ class CoutServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(coutRepository, never()).save(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -223,7 +227,7 @@ class CoutServiceTest {
                 .hasMessageContaining("Utilisateur authentifie introuvable");
 
         verify(coutRepository, never()).save(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -288,7 +292,7 @@ class CoutServiceTest {
         ArgumentCaptor<Cout> coutCaptor = ArgumentCaptor.forClass(Cout.class);
         verify(coutRepository).save(coutCaptor.capture());
         assertThat(coutCaptor.getValue().getMontant()).isEqualByComparingTo("100.000");
-        verify(historiqueModificationRepository).save(any(HistoriqueModification.class));
+        verify(historiqueService).record(any(), any(), any(), any());
     }
 
     @Test
@@ -324,13 +328,19 @@ class CoutServiceTest {
         assertThat(coutCaptor.getValue().getDateCout()).isEqualTo(LocalDate.of(2026, 3, 1));
         assertThat(coutCaptor.getValue().getProjet()).isSameAs(projet);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.MODIFICATION);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
-        assertThat(historiqueCaptor.getValue().getDescription()).contains("Modification du cout 20 du projet PRJ-001");
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.MODIFICATION);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Modification du cout 20 du projet PRJ-001");
     }
 
     @Test
@@ -377,7 +387,7 @@ class CoutServiceTest {
 
         verify(coutRepository, never()).save(any(Cout.class));
         verify(coutRepository, never()).delete(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     @Test
@@ -393,13 +403,19 @@ class CoutServiceTest {
 
         verify(coutRepository).delete(cout);
 
-        ArgumentCaptor<HistoriqueModification> historiqueCaptor =
-                ArgumentCaptor.forClass(HistoriqueModification.class);
-        verify(historiqueModificationRepository).save(historiqueCaptor.capture());
-        assertThat(historiqueCaptor.getValue().getTypeAction()).isEqualTo(TypeAction.SUPPRESSION);
-        assertThat(historiqueCaptor.getValue().getProjet()).isSameAs(projet);
-        assertThat(historiqueCaptor.getValue().getUtilisateur()).isSameAs(projectManager);
-        assertThat(historiqueCaptor.getValue().getDescription()).contains("Suppression du cout 20 du projet PRJ-001");
+        ArgumentCaptor<Projet> historiqueProjetCaptor = ArgumentCaptor.forClass(Projet.class);
+        ArgumentCaptor<Utilisateur> historiqueUserCaptor = ArgumentCaptor.forClass(Utilisateur.class);
+        ArgumentCaptor<TypeAction> historiqueActionCaptor = ArgumentCaptor.forClass(TypeAction.class);
+        ArgumentCaptor<String> historiqueDescriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(historiqueService).record(
+                historiqueProjetCaptor.capture(),
+                historiqueUserCaptor.capture(),
+                historiqueActionCaptor.capture(),
+                historiqueDescriptionCaptor.capture());
+        assertThat(historiqueActionCaptor.getValue()).isEqualTo(TypeAction.SUPPRESSION);
+        assertThat(historiqueProjetCaptor.getValue()).isSameAs(projet);
+        assertThat(historiqueUserCaptor.getValue()).isSameAs(projectManager);
+        assertThat(historiqueDescriptionCaptor.getValue()).contains("Suppression du cout 20 du projet PRJ-001");
     }
 
     @Test
@@ -442,7 +458,7 @@ class CoutServiceTest {
 
         verify(coutRepository, never()).save(any(Cout.class));
         verify(coutRepository, never()).delete(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     private void assertDeniedUpdate(Utilisateur currentUser, Projet projet, String email) {
@@ -456,7 +472,7 @@ class CoutServiceTest {
 
         verify(coutRepository, never()).save(any(Cout.class));
         verify(coutRepository, never()).delete(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     private void assertDeniedDelete(Utilisateur currentUser, Projet projet, String email) {
@@ -470,7 +486,7 @@ class CoutServiceTest {
 
         verify(coutRepository, never()).save(any(Cout.class));
         verify(coutRepository, never()).delete(any(Cout.class));
-        verify(historiqueModificationRepository, never()).save(any(HistoriqueModification.class));
+        verify(historiqueService, never()).record(any(), any(), any(), any());
     }
 
     private CreateCoutRequest createRequest() {

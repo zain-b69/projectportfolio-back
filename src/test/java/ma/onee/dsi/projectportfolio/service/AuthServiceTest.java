@@ -42,6 +42,9 @@ class AuthServiceTest {
     @Mock
     private AuthenticationManager authenticationManager;
 
+    @Mock
+    private HistoriqueService historiqueService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -51,7 +54,8 @@ class AuthServiceTest {
                 roleRepository,
                 passwordEncoder,
                 jwtService,
-                authenticationManager
+                authenticationManager,
+                historiqueService
         );
     }
 

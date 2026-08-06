@@ -51,6 +51,9 @@ class AffectationRessourceServiceTest {
     @Mock
     private UtilisateurRepository utilisateurRepository;
 
+    @Mock
+    private HistoriqueService historiqueService;
+
     private AffectationRessourceService affectationRessourceService;
 
     @BeforeEach
@@ -59,7 +62,8 @@ class AffectationRessourceServiceTest {
                 affectationRessourceRepository,
                 projetRepository,
                 ressourceRepository,
-                utilisateurRepository
+                utilisateurRepository,
+                historiqueService
         );
     }
 

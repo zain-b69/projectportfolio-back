@@ -1,19 +1,16 @@
 package ma.onee.dsi.projectportfolio.service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import ma.onee.dsi.projectportfolio.dto.CreateRisqueRequest;
 import ma.onee.dsi.projectportfolio.dto.RisqueResponse;
 import ma.onee.dsi.projectportfolio.dto.UpdateRisqueRequest;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Risque;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
 import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.RisqueRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
@@ -27,18 +24,18 @@ public class RisqueService {
     private final RisqueRepository risqueRepository;
     private final ProjetRepository projetRepository;
     private final UtilisateurRepository utilisateurRepository;
-    private final HistoriqueModificationRepository historiqueModificationRepository;
+    private final HistoriqueService historiqueService;
 
     public RisqueService(
             RisqueRepository risqueRepository,
             ProjetRepository projetRepository,
             UtilisateurRepository utilisateurRepository,
-            HistoriqueModificationRepository historiqueModificationRepository
+            HistoriqueService historiqueService
     ) {
         this.risqueRepository = risqueRepository;
         this.projetRepository = projetRepository;
         this.utilisateurRepository = utilisateurRepository;
-        this.historiqueModificationRepository = historiqueModificationRepository;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +64,7 @@ public class RisqueService {
         risque.setProjet(projet);
 
         Risque savedRisque = risqueRepository.save(risque);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.AJOUT_RISQUE,
@@ -88,7 +85,7 @@ public class RisqueService {
         risque.setNiveauCriticite(request.getNiveauCriticite());
 
         Risque savedRisque = risqueRepository.save(risque);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.MODIFICATION,
@@ -106,7 +103,7 @@ public class RisqueService {
         assertResponsibleProjectManager(projet, currentUser);
 
         risqueRepository.delete(risque);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.SUPPRESSION,
@@ -139,17 +136,6 @@ public class RisqueService {
                 || !Objects.equals(projet.getUtilisateur().getIdUtilisateur(), utilisateur.getIdUtilisateur())) {
             throw new AccessDeniedException("Le responsable projet ne peut gerer que les risques de ses propres projets");
         }
-    }
-
-    private void recordHistory(Projet projet, Utilisateur utilisateur, TypeAction typeAction, String description) {
-        HistoriqueModification historiqueModification = new HistoriqueModification();
-        historiqueModification.setDateModification(LocalDate.now());
-        historiqueModification.setUtilisateur(utilisateur);
-        historiqueModification.setProjet(projet);
-        historiqueModification.setTypeAction(typeAction);
-        historiqueModification.setDescription(description);
-
-        historiqueModificationRepository.save(historiqueModification);
     }
 
     private RisqueResponse mapRisque(Risque risque) {

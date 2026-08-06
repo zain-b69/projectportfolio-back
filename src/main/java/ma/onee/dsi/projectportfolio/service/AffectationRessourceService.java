@@ -12,6 +12,7 @@ import ma.onee.dsi.projectportfolio.entity.Ressource;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
 import ma.onee.dsi.projectportfolio.enums.NatureIntervention;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
+import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.BusinessRuleException;
 import ma.onee.dsi.projectportfolio.exception.DuplicateResourceException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
@@ -30,17 +31,20 @@ public class AffectationRessourceService {
     private final ProjetRepository projetRepository;
     private final RessourceRepository ressourceRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final HistoriqueService historiqueService;
 
     public AffectationRessourceService(
             AffectationRessourceRepository affectationRessourceRepository,
             ProjetRepository projetRepository,
             RessourceRepository ressourceRepository,
-            UtilisateurRepository utilisateurRepository
+            UtilisateurRepository utilisateurRepository,
+            HistoriqueService historiqueService
     ) {
         this.affectationRessourceRepository = affectationRessourceRepository;
         this.projetRepository = projetRepository;
         this.ressourceRepository = ressourceRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +90,15 @@ public class AffectationRessourceService {
         affectationRessource.setNatureIntervention(request.getNatureIntervention());
         affectationRessource.setChargeJH(request.getChargeJH());
 
-        return mapAffectationRessource(affectationRessourceRepository.save(affectationRessource));
+        AffectationRessource savedAffectation = affectationRessourceRepository.save(affectationRessource);
+        historiqueService.record(
+                projet,
+                currentUser,
+                TypeAction.AFFECTATION_RESSOURCE,
+                "Affectation de la ressource " + ressource.getNom() + " au projet " + projet.getCode()
+        );
+
+        return mapAffectationRessource(savedAffectation);
     }
 
     @Transactional
@@ -106,7 +118,15 @@ public class AffectationRessourceService {
         affectationRessource.setNatureIntervention(request.getNatureIntervention());
         affectationRessource.setChargeJH(request.getChargeJH());
 
-        return mapAffectationRessource(affectationRessourceRepository.save(affectationRessource));
+        AffectationRessource savedAffectation = affectationRessourceRepository.save(affectationRessource);
+        historiqueService.record(
+                projet,
+                currentUser,
+                TypeAction.MODIFICATION,
+                "Modification de l'affectation " + affectationId + " du projet " + projet.getCode()
+        );
+
+        return mapAffectationRessource(savedAffectation);
     }
 
     @Transactional
@@ -117,6 +137,12 @@ public class AffectationRessourceService {
 
         AffectationRessource affectationRessource = findAffectationByIdAndProjectId(affectationId, projectId);
         affectationRessourceRepository.delete(affectationRessource);
+        historiqueService.record(
+                projet,
+                currentUser,
+                TypeAction.SUPPRESSION,
+                "Retrait de l'affectation " + affectationId + " du projet " + projet.getCode()
+        );
     }
 
     private AffectationRessource findAffectationByIdAndProjectId(Long affectationId, Long projectId) {

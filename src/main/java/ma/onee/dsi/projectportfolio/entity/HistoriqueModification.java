@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,7 +23,7 @@ public class HistoriqueModification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idHistoriqueModification;
 
-    private LocalDate dateModification;
+    private LocalDateTime dateModification;
 
     private String description;
 

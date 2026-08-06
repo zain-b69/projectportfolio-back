@@ -7,6 +7,7 @@ import ma.onee.dsi.projectportfolio.dto.RegisterRequest;
 import ma.onee.dsi.projectportfolio.entity.Role;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
 import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
+import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.DuplicateResourceException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
 import ma.onee.dsi.projectportfolio.repository.RoleRepository;
@@ -16,6 +17,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -25,19 +27,22 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final HistoriqueService historiqueService;
 
     public AuthService(
             UtilisateurRepository utilisateurRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AuthenticationManager authenticationManager
+            AuthenticationManager authenticationManager,
+            HistoriqueService historiqueService
     ) {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.historiqueService = historiqueService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -64,6 +69,7 @@ public class AuthService {
         return buildAuthResponse(jwtToken, savedUser);
     }
 
+    @Transactional
     public AuthResponse authenticate(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -77,6 +83,13 @@ public class AuthService {
 
         utilisateur.setDateDerniereConnexion(LocalDateTime.now());
         utilisateurRepository.save(utilisateur);
+
+        historiqueService.record(
+                null,
+                utilisateur,
+                TypeAction.CONNEXION,
+                "Connexion de l'utilisateur " + utilisateur.getEmail()
+        );
 
         String jwtToken = jwtService.generateToken(utilisateur);
 

@@ -1,13 +1,11 @@
 package ma.onee.dsi.projectportfolio.service;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import ma.onee.dsi.projectportfolio.dto.PieceJointeDownloadResponse;
 import ma.onee.dsi.projectportfolio.dto.PieceJointeResponse;
-import ma.onee.dsi.projectportfolio.entity.HistoriqueModification;
 import ma.onee.dsi.projectportfolio.entity.PieceJointe;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.entity.Utilisateur;
@@ -15,7 +13,6 @@ import ma.onee.dsi.projectportfolio.enums.RoleLibelle;
 import ma.onee.dsi.projectportfolio.enums.TypeAction;
 import ma.onee.dsi.projectportfolio.exception.BusinessRuleException;
 import ma.onee.dsi.projectportfolio.exception.ResourceNotFoundException;
-import ma.onee.dsi.projectportfolio.repository.HistoriqueModificationRepository;
 import ma.onee.dsi.projectportfolio.repository.PieceJointeRepository;
 import ma.onee.dsi.projectportfolio.repository.ProjetRepository;
 import ma.onee.dsi.projectportfolio.repository.UtilisateurRepository;
@@ -31,20 +28,20 @@ public class PieceJointeService {
     private final PieceJointeRepository pieceJointeRepository;
     private final ProjetRepository projetRepository;
     private final UtilisateurRepository utilisateurRepository;
-    private final HistoriqueModificationRepository historiqueModificationRepository;
+    private final HistoriqueService historiqueService;
     private final FileStorageService fileStorageService;
 
     public PieceJointeService(
             PieceJointeRepository pieceJointeRepository,
             ProjetRepository projetRepository,
             UtilisateurRepository utilisateurRepository,
-            HistoriqueModificationRepository historiqueModificationRepository,
+            HistoriqueService historiqueService,
             FileStorageService fileStorageService
     ) {
         this.pieceJointeRepository = pieceJointeRepository;
         this.projetRepository = projetRepository;
         this.utilisateurRepository = utilisateurRepository;
-        this.historiqueModificationRepository = historiqueModificationRepository;
+        this.historiqueService = historiqueService;
         this.fileStorageService = fileStorageService;
     }
 
@@ -64,7 +61,7 @@ public class PieceJointeService {
         pieceJointe.setProjet(projet);
 
         PieceJointe savedPieceJointe = pieceJointeRepository.save(pieceJointe);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.AJOUT_PIECE_JOINTE,
@@ -103,7 +100,7 @@ public class PieceJointeService {
 
         fileStorageService.delete(pieceJointe.getCheminFichier());
         pieceJointeRepository.delete(pieceJointe);
-        recordHistory(
+        historiqueService.record(
                 projet,
                 currentUser,
                 TypeAction.SUPPRESSION,
@@ -146,17 +143,6 @@ public class PieceJointeService {
         if (!hasText(file.getOriginalFilename())) {
             throw new BusinessRuleException("Le nom du fichier est obligatoire");
         }
-    }
-
-    private void recordHistory(Projet projet, Utilisateur utilisateur, TypeAction typeAction, String description) {
-        HistoriqueModification historiqueModification = new HistoriqueModification();
-        historiqueModification.setDateModification(LocalDate.now());
-        historiqueModification.setUtilisateur(utilisateur);
-        historiqueModification.setProjet(projet);
-        historiqueModification.setTypeAction(typeAction);
-        historiqueModification.setDescription(description);
-
-        historiqueModificationRepository.save(historiqueModification);
     }
 
     private PieceJointeResponse mapPieceJointe(PieceJointe pieceJointe) {
