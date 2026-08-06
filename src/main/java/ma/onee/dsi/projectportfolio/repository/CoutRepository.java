@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import ma.onee.dsi.projectportfolio.entity.Cout;
 import ma.onee.dsi.projectportfolio.repository.projection.ConsumedCostByProjectProjection;
+import ma.onee.dsi.projectportfolio.repository.projection.CostByTypeProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,4 +34,13 @@ public interface CoutRepository extends JpaRepository<Cout, Long> {
             group by c.projet.idProjet
             """)
     List<ConsumedCostByProjectProjection> sumMontantGroupByProject();
+
+    @Query("""
+            select c.type as type,
+                   sum(c.montant) as totalMontant,
+                   count(c) as count
+            from Cout c
+            group by c.type
+            """)
+    List<CostByTypeProjection> sumMontantGroupByType();
 }

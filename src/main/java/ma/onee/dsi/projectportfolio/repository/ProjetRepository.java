@@ -3,8 +3,10 @@ package ma.onee.dsi.projectportfolio.repository;
 import java.util.Optional;
 import ma.onee.dsi.projectportfolio.entity.Projet;
 import ma.onee.dsi.projectportfolio.repository.projection.DashboardProjectProjection;
+import ma.onee.dsi.projectportfolio.repository.projection.PlannedBudgetByStatusProjection;
 import ma.onee.dsi.projectportfolio.repository.projection.ProjectPriorityCountProjection;
 import ma.onee.dsi.projectportfolio.repository.projection.ProjectStatusCountProjection;
+import ma.onee.dsi.projectportfolio.repository.projection.ReportProjectProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -49,4 +51,27 @@ public interface ProjetRepository extends JpaRepository<Projet, Long>, JpaSpecif
             from Projet p
             """)
     java.util.List<DashboardProjectProjection> findDashboardProjects();
+
+    @Query("""
+            select p.idProjet as projectId,
+                   p.code as code,
+                   p.intitule as intitule,
+                   p.statut as statut,
+                   p.priorite as priorite,
+                   p.pourcentageAvancement as pourcentageAvancement,
+                   p.budgetPrevisionnel as plannedBudget,
+                   u.prenom as prenomResponsable,
+                   u.nom as nomResponsable
+            from Projet p left join p.utilisateur u
+            """)
+    java.util.List<ReportProjectProjection> findReportProjects();
+
+    @Query("""
+            select p.statut as statut,
+                   sum(p.budgetPrevisionnel) as totalPlannedBudget,
+                   count(p) as projectCount
+            from Projet p
+            group by p.statut
+            """)
+    java.util.List<PlannedBudgetByStatusProjection> budgetByStatus();
 }
